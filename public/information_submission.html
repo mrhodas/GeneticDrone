@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Information Submission</title>
+</head>
+<style>
+    button {
+        color: white;
+        width: 85px;
+        background: steelblue;
+    }
+</style>
+
+<body style="background: slategray">
+    <br>
+    <br>
+    <div align="center" style="background: lightblue; width: 50%; margin: auto; border-radius: 100px;">
+        <br>
+        <h1>Drone Stats</h1>
+        <table>
+            <tr>
+                <th align="left" width="115">Max Weight:</th>
+                <th><input type="text" name="max_weight" title="max_weight"></th>
+            </tr>
+            <tr>
+                <th align="left">Max Distance:</th>
+                <th><input type="text" name="max_distance" title="max_distance"></th>
+            </tr>
+            <tr>
+                <th align="left">Drone Count:</th>
+                <th><input type="text" name="drone_count" title="drone_count"></th>
+            </tr>
+            <tr>
+                <th align="left">Cargo Capacity:</th>
+                <th><input type="text" name="cargo_capacity" title="cargo_capacity"></th>
+            </tr>
+        </table>
+
+        <h1>Package Info</h1>
+        <table>
+            <tr>
+                <th align="left" width="50">Height:</th>
+                <th><input type="text" name="height" title="height" id="height"></th>
+            </tr>
+            <tr>
+                <th align="left">Width:</th>
+                <th><input type="text" name="width" title="width" id="width"></th>
+            </tr>
+            <tr>
+                <th align="left">Length:</th>
+                <th><input type="text" name="length" title="length" id="length"></th>
+            </tr>
+            <tr>
+                <th align="left">Weight:</th>
+                <th><input type="text" name="weight" title="weight" id="weight"></th>
+            </tr>
+            <tr>
+                <th align="left">X:</th>
+                <th><input type="text" name="x" title="weight" id="x"></th>
+            </tr>
+            <tr>
+                <th align="left">Y:</th>
+                <th><input type="text" name="y" title="weight" id="y"></th>
+            </tr>
+            <tr align="left">
+                <th></th>
+                <th><button onclick="addParcel()">Add Package</button></th>
+            </tr>
+            <tr align="left">
+                <th></th>
+                <th><button onclick="createOrder()">Submit</button></th>
+            </tr>
+        </table>
+
+        <h3>- OR - </h3>
+
+        <form>
+            <input id="file" type="file" name="file" accept=".json">
+            <button onclick="handleJSONFile()">Submit</button>
+        </form>
+        <br><br>
+    </div>
+</body>
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+<script>
+    var parcelList = [];
+
+    var socket = io('/admin');
+
+    socket.on('connect', function() {
+        console.log('connected to server');
+    });
+
+    function createOrder() {
+
+        //Grab data from HTML
+        var maxWeight = document.getElementsByName("max_weight");
+        var maxDistance = document.getElementsByName("max_distance");
+        var numDrones = document.getElementsByName("drone_count");
+        var numPackages = document.getElementsByName("cargo_capacity");
+
+        var workDetail = {
+            parcelList: parcelList,
+            config: {
+                maxDistance: maxDistance,
+                maxWeight: maxWeight,
+                numDrones: numDrones,
+                numPackages: numPackages
+            }
+        }
+
+        console.log('created workDetail ', workDetail);
+
+        sendOrder(workDetail);
+    }
+
+    function handleJSONFile(workDetail) {
+        console.log('loaded workDetail ', workDetail);
+
+        //Attempt to send
+        sendOrder(workDetail);
+    }
+
+    function sendOrder(workDetail) {
+        //Test if valid
+        if (testJSONObject(workDetail)) {
+            socket.emit('admin:pass:details', workDetail);
+
+            window.location.href = "view.html";
+
+        }
+
+    }
+
+    function addParcel() {
+        //Create empty parcel
+        var parcelInfo = {};
+
+        //Add Values
+        parcelInfo.weight = document.getElementById("weight").value;
+        parcelInfo.height = document.getElementById("height").value;
+        parcelInfo.width = document.getElementById("width").value;
+        parcelInfo.length = document.getElementById("length").value;
+        parcelInfo.x = document.getElementById("x").value;
+        parcelInfo.y = document.getElementById("y").value;
+
+        //Check if x has data
+        if (parcelInfo.x === "") {
+            parcelInfo.x = Math.random() * 200;
+        }
+
+        //Check if y has data
+        if (parcelInfo.y === "") {
+            parcelInfo.y = Math.random() * 200;
+        }
+
+        //Check if weight has data
+        if (parcelInfo.weight === "") {
+            parcelInfo.weight = Math.random() * 10;
+        }
+
+        console.log('adding parcel ', parcelInfo);
+
+        //Add to array of parcels
+        parcelList.push(parcelInfo);
+
+        //Clear HTML
+        document.getElementById("weight").value = "";
+        document.getElementById("height").value = "";
+        document.getElementById("width").value = "";
+        document.getElementById("length").value = "";
+        document.getElementById("x").value = "";
+        document.getElementById("y").value = "";
+
+    }
+
+    function testJSONObject(workDetail) {
+        if (!(workDetail.config)) {
+            alert('JSON config object is missing');
+            return false;
+        }
+
+        if (!(workDetail.parcelList)) {
+            alert('JSON parcelList object is missing');
+            return false;
+        }
+
+        return testConfigObject(workDetail.config) && testParcelList(workDetail.parcelList);
+
+    }
+
+    function testConfigObject(config) {
+        if (!(config.maxWeight)) {
+            alert('JSON.config is missing maxWeight property');
+            return false;
+        }
+
+        if (!(config.maxDistance)) {
+            alert('JSON.config is missing maxDistance property');
+            return false;
+        }
+
+        if (!(config.numPackages)) {
+            alert('JSON.config is missing numPackages property');
+            return false;
+        }
+
+        if (!(config.numDrones)) {
+            alert('JSON.config is missing numDrones property');
+            return false;
+        }
+
+        //Passed all tests
+        return true;
+
+    }
+
+    function testParcelList(parcelList) {
+        //Check if is an array
+        if (!Array.isArray(parcelList)) {
+            alert('JSON.parcelList is not an array');
+            return false;
+        }
+
+        for (var i = 0; i < parcelList.length; i++) {
+            if (!testParcel(parcelList[i], i)) {
+                return false;
+            }
+        }
+
+        //Passed All Tests
+        return true
+    }
+
+    function testParcel(parcel, index) {
+        if (!(parcel.weight)) {
+            alert('JSON.parcelList[' + index + '] is missing weight property');
+            return false;
+        }
+
+        if (!(parcel.x)) {
+            alert('JSON.parcelList[' + index + '] is missing x property');
+            return false;
+        }
+
+        if (!(parcel.y)) {
+            alert('JSON.parcelList[' + index + '] is missing y property');
+            return false;
+        }
+
+        return true;
+    }
+
+    function handleFileSelect(evt) {
+        var file = evt.target.files[0]; // FileList object
+
+        var reader = new FileReader();
+
+        // Closure to capture the file information.
+        reader.onload = (function(theFile) {
+            return function(e) {
+                var obj = JSON.parse(e.target.result);
+
+                handleJSONFile(obj);
+            };
+        })(file);
+
+        reader.readAsText(file);
+    }
+
+    document.getElementById('file').addEventListener('change', handleFileSelect, false);
+</script>
+
+</html>
